@@ -1,20 +1,8 @@
-# ER to ER transit using NVAs/ARS and reverse hairpinning
+# Compare ER to ER transit solutions
 
-## Concepts
+## Introduction
 
-On this post we're going to go over on how to allow two or more ExpressRoute (ER) circuits to transit traffic between them using Azure Route Server and reverse hairpinning traffic between them.
-
-It is important to mention you can build your Azure network using two models: Hub and Spoke and Virtual WAN. This post will focus on the solution for Hub and Spoke by leveraging Azure Route Server and a network virtual appliance (NVA) to inject routes and create the conditions to the traffic hairpin over the NVA between two remote locations going over ER circuits.
-
-### When to use this solution
-
-This solution maybe not suitable for all scenarios but as an additional option to the other solutions listed below to accomplish the same. The other solutions already established maybe better suitable to your requirements and/or easier to implement.
-
-### How this solution works
-
-This solution relies on using summary routes and other routing techniques to allow the NVA attract unknown routes from each other side. Therefore, there's no direct route exchange between ER Circuits.
-
-### Compare solutions
+## Compare solutions
 
 For ER to ER transit there are multiple solutions. Below is the list of the well known solutions:
 
