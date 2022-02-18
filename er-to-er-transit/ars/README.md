@@ -1,4 +1,4 @@
-# ER to ER transit using NVAs/ARS and reverse hairpin
+# Transit between ExpressRoute circuits using NVAs and ARS (reverse hairpin)
 
 - [Concepts](#Introduction)
     - [When to use this solution](#When-to-use-this-solution)

@@ -1,4 +1,4 @@
-# LAB: ER to ER transit using NVAs/ARS and reverse hairpin
+# LAB: Transit between ExpressRoute circuits using NVAs/ARS (reverse hairpin)
 
 **In this article**
 
