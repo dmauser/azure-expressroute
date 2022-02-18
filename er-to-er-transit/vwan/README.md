@@ -1,4 +1,4 @@
-# ER to ER transit Secured vHub (Routing Intent)
+# ER to ER transit using vWAN + Azure Firewall with Routing Intent
 
 Coming soon
 
