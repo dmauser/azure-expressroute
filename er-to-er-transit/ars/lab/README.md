@@ -50,15 +50,15 @@ az login
 az account list -o table --query "[].{Name:name, IsDefault:isDefault}"
 #List default Subscription being used
 az account list --query "[?isDefault == \`true\`].{Name:name, IsDefault:isDefault}" -o table
-# In case you want to do it separated Subscription change your active subscription as shown
-az account set --subscription #Select your subscription
+#In case you want to do it separated Subscription change your active subscription as shown
+az account set --name <Add You Subscription Name> #Select your subscription
 
 #Set Azure Variables <===== Make changes here based on your requirements =====>
 rg=lab-ars-er-transit #Define your resource group
 location=centralus #Set Region
 mypip=$(curl -4 ifconfig.io -s) #Captures your local Public IP and adds it to NSG to restrict access to SSH only for your Public IP.
-EREnvironmentAddressSpace=10.154.0.0/22 #Emulated AVS
-OnPremVnetAddressSpace=10.112.8.0/24 # On-premises
+remotebranch1=10.154.0.0/22 #Emulated AVS
+remotebranch2=10.112.8.0/24 # On-premises
 
 #Define parameters for Azure Hub and Spokes: <===== Changes here are optional =====>
 AzurehubName=Az-Hub #Azure Hub Name
@@ -242,14 +242,14 @@ az network route-table route create --resource-group $rg --name Spok2-to-NVA --r
 --address-prefix $Azurespoke2AddressSpacePrefix \
 --next-hop-type VirtualAppliance \
 --next-hop-ip-address $nvalb
-## OnPrem VPN
-az network route-table route create --resource-group $rg --name OnPremVPN-to-NVA --route-table-name RT-GWSubnet-to-NVA \
---address-prefix $OnPremVnetAddressSpace \
+## Remote Branch1 via Expressroute
+az network route-table route create --resource-group $rg --name Branch1-to-NVA --route-table-name RT-GWSubnet-to-NVA \
+--address-prefix $remotebranch1 \
 --next-hop-type VirtualAppliance \
 --next-hop-ip-address $nvalb
-## ExpressRoute Env
-az network route-table route create --resource-group $rg --name EREvn-to-NVA --route-table-name RT-GWSubnet-to-NVA \
---address-prefix $EREnvironmentAddressSpace \
+## Remote Branch1 via Expressroute
+az network route-table route create --resource-group $rg --name Branch2-to-NVA --route-table-name RT-GWSubnet-to-NVA \
+--address-prefix $remotebranch2 \
 --next-hop-type VirtualAppliance \
 --next-hop-ip-address $nvalb
 ## Associating RT-to-GWSubnet to GatewaySubnet

@@ -86,6 +86,14 @@ In case the UDR is not configured in the GatewaySubnet, the traffic hairpin will
 
 ![ARS+NVA+UDR requirement](./media/ars-nva-udr.png)
 
+#### UDR configuration
+
+Looking at the first diagram we have two On-premises locations using 10.154.0.0/22 (OnPrem1) and 10.112.8.0/24 (OnPrem2). In that scenario you have to set a UDR on the GatewaySubnet and add two routes to the NVA IP or Load Balancer IP as next hop. For example, below he have both remote Branches routes representing both on-premises. The same UDR is associated to the GatewaySubnet.
+
+![GatewaySubnet UDR](./media/udr-routes-nvalb.png)
+
+The [LAB](#lab-this-solution) covers that in more details.
+
 ### Other considerations
 
 - **ER FastPath** - Because UDR is required for this solution to work, at this time ExpressRoute [FastPath](https://docs.microsoft.com/en-us/azure/expressroute/about-fastpath#limitations) is not supported.

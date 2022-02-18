@@ -20,7 +20,7 @@ This repo is dedicated to consolidate information about ExpressRoute (ER) to Exp
 - [Virtual WAN Hub routing intent and routing policies](https://docs.microsoft.com/en-us/azure/virtual-wan/how-to-routing-policies)
 - [Azure VMWare Solutions - Scenario 2: Third-party NVA in Azure Virtual Network with Azure Route Server, with Global Reach disabled](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/scenarios/azure-vmware/eslz-network-topology-connectivity#scenario-2-third-party-nva-in-azure-virtual-network-with-azure-route-server-with-global-reach-disabled)
 
-## Recommended references
+## Related references
 
 - [Enable Transit Between ExpressRoute Circuits without Using Global Reach](https://github.com/jocortems/azurehybridnetworking/tree/main/ExpressRoute-Transit-with-Azure-RouteServer)
 - [Inspecting Traffic across ExpressRoute Circuits in Azure](https://github.com/jocortems/azurehybridnetworking/tree/main/Inspect-Traffic-Between-ExpressRoute-Circuits)
