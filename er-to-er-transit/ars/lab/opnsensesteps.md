@@ -12,9 +12,13 @@ Access OPNSense configuration UI using its public IP.
 
 ![](./media/step2.png)
 
-#### Step 3 - Configure configuration replication to the second OPNsense instance (NVA2)
+#### Step 3 - Configure configuration synchronization to the second OPNsense instance (NVA2)
 
 ![](./media/step3.png)
+
+#### Step 3.1 - Enable Static Routes, FRR and Firewall rules to be synchronized to the NVA2
+
+![](./media/step31.png)
 
 #### Step 4 - Configure LAN Firewall rule to allow all traffic
 

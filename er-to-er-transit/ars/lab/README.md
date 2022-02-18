@@ -305,7 +305,7 @@ mypip=$(curl -4 ifconfig.io -s) #Gets your Home Public IP or replace with that i
 
 ### 6) OPNSense NVA Configuration
 
-Follow the steps on this [document](https://github.com/dmauser/azure-expressroute/blob/main/er-to-er-transit/ars/lab/opnsensesteps.md) to configure BGP on OPNSense.
+Follow the steps on this [document](https://github.com/dmauser/azure-expressroute/blob/main/er-to-er-transit/ars/lab/opnsensesteps.md) for OPNSense configuration.
 
 ### 7) Validations
 
