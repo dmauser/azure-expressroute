@@ -1,6 +1,6 @@
 # ER to ER transit using vWAN + Azure Firewall with Routing Intent
 
-Coming soon
+## _Coming soon..._
 
 ## Architecture diagram
 
