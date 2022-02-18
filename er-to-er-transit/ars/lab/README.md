@@ -305,13 +305,7 @@ mypip=$(curl -4 ifconfig.io -s) #Gets your Home Public IP or replace with that i
 
 ### 6) OPNSense NVA Configuration
 
-Run the following steps over OPNSense UI.
-
-1. Set Firewall rule to the LAN to source any (default source as LAN).
-2. Add FFR plugin and configure BGP 65002.
-3. Configure ARS as BGP peers.
-
-Note: screenshot to be added soon.
+Follow the steps on this [document]() to configure BGP on OPNSense.
 
 ### 7) Validations
 
