@@ -1,5 +1,7 @@
 # ExpressRoute to ExpressRoute circuit transit options
 
+## (Coming soon - under construction)
+
 ## Introduction
 
 The goal of this article is to go over the existing solutions that allow ExpressRoute to ExpressRoute transit.
