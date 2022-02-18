@@ -1,12 +1,13 @@
 # Express Route to Express Route transit
 
-Below you can find a list of relevant topics:
+This repo is dedicated to consolidate information about 
 
 ## Articles in this repo
 
 - [ER to ER transit using NVAs/ARS and reverse hairpin](https://github.com/dmauser/azure-expressroute/tree/main/er-to-er-transit/ars)
     - [LAB this solution](https://github.com/dmauser/azure-expressroute/tree/main/er-to-er-transit/ars/lab)
 - [ER to ER transit using vWAN + Azure Firewall with Routing Intent](https://github.com/dmauser/azure-expressroute/tree/main/er-to-er-transit/vwan)
+- Compare ER to ER transit solutions (coming soo)
 
 ## Microsoft Docs
 
