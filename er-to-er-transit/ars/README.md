@@ -101,7 +101,7 @@ The [LAB](#lab-this-solution) covers that in more details.
 
 ## Lab this solution
 
-Follow the steps to lab this solution in [LAB: ER to ER transit using NVAs/ARS and reverse hairpin](https://github.com/dmauser/azure-er-to-er-transit/tree/main/ars/lab)
+Follow the steps to lab this solution in [LAB: ER to ER transit using NVAs/ARS and reverse hairpin](https://github.com/dmauser/azure-expressroute/tree/main/er-to-er-transit/ars/lab)
 
 ## Closing
 
