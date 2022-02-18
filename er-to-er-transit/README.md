@@ -4,7 +4,7 @@ This repo is dedicated to consolidate information about ExpressRoute (ER) to Exp
 
 ## Articles in this repo
 
-- Compare ER to ER transit solutions (coming soo)
+- Transit between ExpressRoute circuits - comparing solutions (coming soon)
 
 **Hub and Spoke**
 - [Transit between ExpressRoute circuits using NVAs and ARS (reverse hairpin)](https://github.com/dmauser/azure-expressroute/tree/main/er-to-er-transit/ars)

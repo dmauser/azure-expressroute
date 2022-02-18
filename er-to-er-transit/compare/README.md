@@ -1,4 +1,4 @@
-# ExpressRoute to ExpressRoute circuit transit options
+# Transit between ExpressRoute circuits - comparing solutions
 
 ## (Coming soon - under construction)
 
