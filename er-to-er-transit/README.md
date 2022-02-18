@@ -1,4 +1,4 @@
-# Express Route to Express Route transit
+# Transit between ExpressRoute circuits
 
 This repo is dedicated to consolidate information about ExpressRoute (ER) to ExpressRoute transit scenarios:
 
