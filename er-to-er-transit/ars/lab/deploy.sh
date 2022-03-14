@@ -45,7 +45,7 @@ JsonAzure={\"hubName\":\"$AzurehubName\",\"addressSpacePrefix\":\"$Azurehubaddre
 echo "***  Note you will be prompted by username and password ***"
 echo "*** It will take around 30 minutes to finish the deployment ***"
 az group create --name $rg --location $location
-az deployment group create --name HubSpokeBase--resource-group $rg \
+az deployment group create --name HubSpokeBase --resource-group $rg \
 --template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeploy.json \
 --parameters Restrict_SSH_VM_AccessByPublicIP=$mypip deployHubERGateway=true Azure=$JsonAzure deployAzureRouteServer=true RouteServerB2B=true \
 --output none
