@@ -294,7 +294,7 @@ for nva in "${array[@]}"
   done
 
 # RS learned routes
-array=($nvalb $nva2)
+array=($AzurehubName-nva1 $AzurehubName-nva2)
 for nva in "${array[@]}"
   do
   echo Learned routes on RS $AzurehubName-routeserver from $nva
