@@ -367,6 +367,27 @@ az network vnet subnet update -n GatewaySubnet -g $rg --vnet-name $AzurehubName-
 #Cleanup
 
 #GCP
+
+# Define your variables
+project=angular-expanse-327722 #Set your project Name. Get your PROJECT_ID use command: gcloud projects list 
+region=us-central1 #Set your region. Get Regions/Zones Use command: gcloud compute zones list
+zone=us-central1-c # Set availability zone: a, b or c.
+vpcrange=10.154.0.0/22
+envname=avs-dal
+vmname=vm1
+mypip=$(curl -4 ifconfig.io -s) #Gets your Home Public IP or replace with that information. It will add it to the NVA Rule.
+
+# Define your variables
+project=angular-expanse-327722 #Set your project Name. Get your PROJECT_ID use command: gcloud projects list 
+region=us-central1 #Set your region. Get Regions/Zones Use command: gcloud compute zones list
+zone=us-central1-c # Set availability zone: a, b or c.
+vpcrange=10.112.8.0/24
+envname=onprem-chi
+vmname=vm1
+mypip=$(curl -4 ifconfig.io -s) #Gets your Home Public IP or replace with that information. It will add it to the NVA Rule.
+
+
+
 # Note use the same variables above twice to delete each enviroment
 gcloud compute interconnects attachments delete $envname-vlan --region $region --quiet 
 gcloud compute routers delete $envname-router --project=$project --region=$region --quiet
