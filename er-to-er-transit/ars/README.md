@@ -80,7 +80,7 @@ You can also have a hybrid approach on mixing items 2 and 3 depending on your re
 
 ### UDR requirement on GatewaySubnet
 
-This solution requires that n UDR is created on the GatewaySubnet to steer the traffic to the NVA in the Azure Hub.
+This solution requires that an UDR is created on the GatewaySubnet to steer the traffic to the NVA in the Azure Hub.
 
 In case the UDR is not configured in the GatewaySubnet, the traffic hairpin will work, but that traffic will go over ER Gateway (shown as purple line flow on the diagram below). However, that is not recommended approach. Because it causes a direct performance impact on the ER Gateway when making outbound connections to the On-premises networks. Also, ER Gateway was not designed to accommodate that traffic pattern. Therefore, the recommended approach is to move that role to the NVA, which will make the outbound traffic directly to the MSEE routers (shown as outbound only on the diagram below). That will be possible by enforcing UDR on the GatewaySubnet using the IP ranges of the networks connected over on-premises via ER circuit.
 
