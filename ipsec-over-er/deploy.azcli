@@ -23,6 +23,7 @@ Azurespoke1Subnet1Prefix=10.0.11.0/27 # Azure Spoke 1 Subnet1 address prefix
 Azurespoke2Name=az-spk2 #Azure Spoke 1 name
 Azurespoke2AddressSpacePrefix=10.0.12.0/24 # Azure Spoke 1 VNET address space
 Azurespoke2Subnet1Prefix=10.0.12.0/27 # Azure Spoke 1 VNET address space
+Azurespoke2Subnet2Prefix=10.0.12.64/27
 
 #Parsing parameters above in Json format (do not change)
 JsonAzure={\"hubName\":\"$AzurehubName\",\"addressSpacePrefix\":\"$AzurehubaddressSpacePrefix\",\"subnetName\":\"$AzurehubNamesubnetName\",\"subnet1Prefix\":\"$Azurehubsubnet1Prefix\",\"AzureFirewallPrefix\":\"$AzureFirewallPrefix\",\"gatewaySubnetPrefix\":\"$AzurehubgatewaySubnetPrefix\",\"rssubnetPrefix\":\"$AzurehubrssubnetPrefix\",\"bastionSubnetPrefix\":\"$AzureHubBastionSubnet\",\"spoke1Name\":\"$Azurespoke1Name\",\"spoke1AddressSpacePrefix\":\"$Azurespoke1AddressSpacePrefix\",\"spoke1Subnet1Prefix\":\"$Azurespoke1Subnet1Prefix\",\"spoke2Name\":\"$Azurespoke2Name\",\"spoke2AddressSpacePrefix\":\"$Azurespoke2AddressSpacePrefix\",\"spoke2Subnet1Prefix\":\"$Azurespoke2Subnet1Prefix\"}
@@ -54,6 +55,7 @@ UntrustedSubnetCIDR=10.100.0.0/28
 TrustedSubnetCIDR=10.100.0.16/28
 GatewaySubnet=10.100.0.32/27
 subnet1=10.100.0.96/27
+subnet2=10.100.0.160/27
 existingUntrustedSubnetName=untrusted
 existingTrustedSubnetName=trusted
 
@@ -64,10 +66,24 @@ az deployment group create --name onprem-nva-$RANDOM --resource-group $rg \
 --no-wait
 
 # Deply On-premises VM:
+# Subnet1
 az network vnet subnet create -g $rg --vnet-name $onpremname-vnet -n subnet1 --address-prefixes $subnet1  --output none
 az vm create -n $onpremname-vm1  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet subnet1 --vnet-name $onpremname-vnet --admin-username $username --admin-password $password --nsg "" --no-wait
 # Associate NSG
 az network vnet subnet update -g $rg --name subnet1 --vnet-name $onpremname-vnet --network-security-group $location-default-nsg -o none
+
+# Subnet2
+az network vnet subnet create -g $rg --vnet-name $onpremname-vnet -n subnet2 --address-prefixes $subnet2  --output none
+az vm create -n $onpremname-vm2  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet subnet2 --vnet-name $onpremname-vnet --admin-username $username --admin-password $password --nsg "" --no-wait
+# Associate NSG
+az network vnet subnet update -g $rg --name subnet2 --vnet-name $onpremname-vnet --network-security-group $location-default-nsg -o none
+
+# Deply Azure Spoke2 VM on Subnet2:
+az network vnet subnet create -g $rg --vnet-name $onpremname-vnet -n subnet1 --address-prefixes $subnet1  --output none
+az vm create -n $onpremname-vm1  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet subnet1 --vnet-name $onpremname-vnet --admin-username $username --admin-password $password --nsg "" --no-wait
+# Associate NSG
+az network vnet subnet update -g $rg --name subnet1 --vnet-name $onpremname-vnet --network-security-group $location-default-nsg -o none
+
 
 # Create VPNGW Zonal Azure side.
 #Variables
