@@ -1,4 +1,4 @@
-### ER Direct Ports bandwidth availability:
+- ER Direct Ports bandwidth availability:
 
 List available bandwidths in all ER Direct locations:
 
