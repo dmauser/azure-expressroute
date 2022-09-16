@@ -12,7 +12,7 @@ for location in $locations
 done
 ```
 
-- Dump ExpressRoute route table Private Peering routes:
+- Dump ExpressRoute route table (Private Peering):
 
 ```Bash
 # Dump ER Circuit routes
