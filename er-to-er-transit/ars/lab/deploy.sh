@@ -17,8 +17,8 @@ az account set --name <Add You Subscription Name> #Select your subscription
 rg=lab-ars-er-transit #Define your resource group
 location=centralus #Set Region
 mypip=$(curl -4 ifconfig.io -s) #Captures your local Public IP and adds it to NSG to restrict access to SSH only for your Public IP.
-remotebranch1=10.154.0.0/22 #Emulated AVS
-remotebranch2=10.112.8.0/24 # On-premises
+remotebranch1=10.154.0.0/24 #Emulated AVS
+remotebranch2=10.120.32.0/22 # On-premises
 
 #Define parameters for Azure Hub and Spokes:
 AzurehubName=Az-Hub #Azure Hub Name
@@ -49,6 +49,14 @@ az deployment group create --name HubSpokeBase --resource-group $rg \
 --template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeploy.json \
 --parameters Restrict_SSH_VM_AccessByPublicIP=$mypip deployHubERGateway=true Azure=$JsonAzure deployAzureRouteServer=true RouteServerB2B=true \
 --output none
+
+#Enable boot diagnostics for all VMs in the resource group (Serial console)
+let "randomIdentifier=$RANDOM*$RANDOM" #used to create unique storage account name.
+#Create Storage Account (boot diagnostics + serial console)
+az storage account create -n sc$randomIdentifier -g $rg -l $location --sku Standard_LRS -o none
+#Enable boot diagnostics
+stguri=$(az storage account show -n sc$randomIdentifier -g $rg --query primaryEndpoints.blob -o tsv)
+az vm boot-diagnostics enable --storage $stguri --ids $(az vm list -g $rg --query "[].id" -o tsv) -o none
 
 #Deploy OPNSense NVA
 # Removes AzureFirewall Subnet and adds untrusted/trusted subnets
@@ -339,14 +347,14 @@ apt update -y && apt install inetutils-traceroute -y
 # Ping test 
 #AVS
 hostname -I
-ping 10.112.8.2 -O
+ping 10.120.32.2 -O
 
 #OnPrem
 hostname -I
 ping 10.154.0.2 -O
 
 # Test HA
-sudo hping3 10.112.8.2 -S -p 22 -c 6 # From AVS
+sudo hping3 10.120.32.2 -S -p 22 -c 6 # From AVS
 sudo hping3 10.154.0.2 -S -p 22 -c 6 # From On-prem
 
 # 6) Misc/Troubleshooting
