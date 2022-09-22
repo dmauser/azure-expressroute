@@ -1,0 +1,89 @@
+Airtel-Chennai-CLS      None    None
+Airtel-Chennai2-CLS     10 Gbps None
+Allied-Toronto-King-West        10 Gbps 100 Gbps
+Area51-ERDirect None    None
+Ascenty-Campinas-Campinas1      100 Gbps        10 Gbps
+AtTokyo-Tokyo-CC1       100 Gbps        10 Gbps
+Bezeq-Tel-Aviv-SIVIM    10 Gbps None
+Bharti-Airtel-Mumbai2   10 Gbps 100 Gbps
+CDC-Canberra    100 Gbps        10 Gbps
+CDC-Canberra2   100 Gbps        10 Gbps
+Chennai-MAA01   None    None
+Cheyenne-ERDirect       None    None
+ChiefTelecom-Taipei     10 Gbps 100 Gbps
+Cologix-Minneapolis-MIN3        10 Gbps 100 Gbps
+Cologix-Montreal-MTL3   10 Gbps 100 Gbps
+Cologix-Toronto-TOR1    10 Gbps None
+CoreSite-Chicago-CH1    10 Gbps 100 Gbps
+Coresite-Denver-DE1     10 Gbps 100 Gbps
+CoreSite-Los-Angeles-LA1        100 Gbps        10 Gbps
+CoreSite-Reston-VA2     10 Gbps None
+CoreSite-Santa-Clara-SV7        10 Gbps None
+CyrusOne-San-Antonio-1  None    None
+DigiPlex-Oslo-Ulven     10 Gbps None
+Du-Datamena-Dubai-DX1   10 Gbps None
+EdgeConnex-Phoenix-PHX01        100 Gbps        10 Gbps
+EdgeConneX-Portland-POR01       10 Gbps None
+EdgeConneX-Santiago-SPA 10 Gbps None
+Equinix-Amsterdam-AM5   10 Gbps None
+Equinix-Ashburn-DC2     None    None
+Equinix-Ashburn-DC6     10 Gbps None
+Equinix-Atlanta-AT2     10 Gbps 100 Gbps
+Equinix-Bogota-BG1      None    None
+Equinix-Chicago-CH1     10 Gbps None
+Equinix-Dallas-DA3      10 Gbps None
+Equinix-Dublin-DB3      10 Gbps 100 Gbps
+Equinix-Frankfurt-FR7   10 Gbps None
+Equinix-Geneva-GV2      100 Gbps        10 Gbps
+Equinix-Hong-Kong-HK1   100 Gbps        10 Gbps
+Equinix-London-LD5      10 Gbps None
+Equinix-Miami-MI1       10 Gbps None
+Equinix-New-York-NY5    None    None
+Equinix-New-York-NY9    None    None
+Equinix-Osaka-OS1       10 Gbps 100 Gbps
+Equinix-Paris-PA4       10 Gbps 100 Gbps
+Equinix-Rio-de-Janeiro-RJ2      10 Gbps None
+Equinix-San-Jose-SV1    10 Gbps None
+Equinix-Sao-Paulo-SP2   10 Gbps 100 Gbps
+Equinix-Seattle-SE2     None    None
+Equinix-Singapore-SG1   None    None
+Equinix-Stockholm-SK1   10 Gbps None
+Equinix-Sydney-SY2      100 Gbps        None
+Equinix-Tokyo-TY4       10 Gbps None
+Etisalat-Abu-Dhabi-KDC  10 Gbps None
+Etisalat-Dubai-DXB20    10 Gbps 100 Gbps
+Global-Switch-Singapore None    None
+GreenMountain-Stavanger 10 Gbps None
+iAdvantage-Hong-Kong2-MEGA-i    10 Gbps None
+Interxion-Amsterdam2-AMS8       100 Gbps        10 Gbps
+Interxion-Copenhagen    100 Gbps        10 Gbps
+Interxion-Dublin-DUB2   10 Gbps 100 Gbps
+Interxion-Frankfurt-FRA11       100 Gbps        10 Gbps
+Interxion-Madrid-MAD1   10 Gbps None
+Interxion-Paris-PAR5    100 Gbps        10 Gbps
+Interxion-Zurich-ZUR2   10 Gbps None
+IRIDEOS-Milan   100 Gbps        10 Gbps
+KINX-Seoul-Gasan        10 Gbps 100 Gbps
+KIO-Networks-Queretaro-QR01     10 Gbps None
+KT-Seoul-Mokdong2       10 Gbps None
+Meeza-Doha-MV2  None    None
+NEC-Tokyo       10 Gbps 100 Gbps
+NextDC-Melbourne-MEL01  10 Gbps 100 Gbps
+NextDC-Sydney-S1        10 Gbps 100 Gbps
+NRPTestLocation None    None
+NTT-GDC-Berlin-1        10 Gbps 100 Gbps
+Ooredoo-Doha-QDC5       10 Gbps None
+PortalTestLocation      100 Gbps        None
+Sabey-Data-Centers-Quincy-A     10 Gbps 100 Gbps
+STTGDC-Pune-PNQDC1      10 Gbps 100 Gbps
+Switch-Las-Vegas        100 Gbps        10 Gbps
+Tata-Chennai-VSB        10 Gbps None
+Tata-Mumbai-LVSB        10 Gbps 100 Gbps
+Telehouse-London2       10 Gbps 100 Gbps
+Telin-Jakarta-CDCI      10 Gbps None
+Teraco-Cape-Town-CT1    10 Gbps None
+Teraco-Johannesburg-JT1 10 Gbps None
+Tivit-Sao-Paulo-TSM     100 Gbps        10 Gbps
+Vantage-Quebec-City-QC21        10 Gbps 100 Gbps
+VantageDC-Newport-NGD   100 Gbps        10 Gbps
+Vocus-Auckland-VDCAKL01 10 Gbps None

@@ -15,6 +15,8 @@ for location in $locations
 done
 ```
 
+Sample output: ![](./files/er-direct-output.txt)
+
 #### Dump ExpressRoute route table (Private Peering):
 
 ```Bash
