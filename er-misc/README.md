@@ -1,4 +1,4 @@
-- ER Direct Ports bandwidth availability:
+#### ER Direct Ports bandwidth availability:
 
  List available bandwidths in all ER Direct locations:
 
@@ -12,7 +12,7 @@ for location in $locations
 done
 ```
 
-- Dump ExpressRoute route table (Private Peering):
+#### Dump ExpressRoute route table (Private Peering):
 
 ```Bash
 # Dump ER Circuit routes
