@@ -1,0 +1,189 @@
+#Variables
+rg=lab-ipsec-er #Define your resource group
+location=eastus #Set location
+username=azureuser
+password=Msft123Msft123
+virtualMachineSize=Standard_DS1_v2
+
+#Variables
+mypip=$(curl -4 ifconfig.io -s) #Captures your local Public IP and adds it to NSG to restrict access to SSH only for your Public IP.
+
+#Define parameters for Azure Hub and Spokes:
+AzurehubName=az-hub #Azure Hub Name
+AzurehubaddressSpacePrefix=10.0.10.0/24 #Azure Hub VNET address space
+AzurehubNamesubnetName=subnet1 #Azure Hub Subnet name where VM will be provisioned
+Azurehubsubnet1Prefix=10.0.10.0/27 #Azure Hub Subnet address prefix
+AzurehubgatewaySubnetPrefix=10.0.10.32/27 #Azure Hub Gateway Subnet address prefix
+AzureFirewallPrefix=10.0.10.64/26 #Azure Firewall Prefix
+AzurehubrssubnetPrefix=10.0.10.128/27 #Azure Hub Route Server subnet address prefix
+AzureHubBastionSubnet=10.0.10.192/26
+Azurespoke1Name=az-spk1 #Azure Spoke 1 name
+Azurespoke1AddressSpacePrefix=10.0.11.0/24 # Azure Spoke 1 VNET address space
+Azurespoke1Subnet1Prefix=10.0.11.0/27 # Azure Spoke 1 Subnet1 address prefix
+Azurespoke2Name=az-spk2 #Azure Spoke 1 name
+Azurespoke2AddressSpacePrefix=10.0.12.0/24 # Azure Spoke 1 VNET address space
+Azurespoke2Subnet1Prefix=10.0.12.0/27 # Azure Spoke 1 VNET address space
+Azurespoke2Subnet2Prefix=10.0.12.64/27
+
+#Parsing parameters above in Json format (do not change)
+JsonAzure={\"hubName\":\"$AzurehubName\",\"addressSpacePrefix\":\"$AzurehubaddressSpacePrefix\",\"subnetName\":\"$AzurehubNamesubnetName\",\"subnet1Prefix\":\"$Azurehubsubnet1Prefix\",\"AzureFirewallPrefix\":\"$AzureFirewallPrefix\",\"gatewaySubnetPrefix\":\"$AzurehubgatewaySubnetPrefix\",\"rssubnetPrefix\":\"$AzurehubrssubnetPrefix\",\"bastionSubnetPrefix\":\"$AzureHubBastionSubnet\",\"spoke1Name\":\"$Azurespoke1Name\",\"spoke1AddressSpacePrefix\":\"$Azurespoke1AddressSpacePrefix\",\"spoke1Subnet1Prefix\":\"$Azurespoke1Subnet1Prefix\",\"spoke2Name\":\"$Azurespoke2Name\",\"spoke2AddressSpacePrefix\":\"$Azurespoke2AddressSpacePrefix\",\"spoke2Subnet1Prefix\":\"$Azurespoke2Subnet1Prefix\"}
+
+#Deploy base lab environment = Hub + VPN Gateway + VM and two Spokes with one VM on each.
+echo Deploying base lab: Hub with Spoke1 and 2, On-Premises and VPN using VNGs with BGP.
+echo "*** It will take around 30 minutes to finish the deployment ***"
+az group create --name $rg --location $location --output none
+az deployment group create --name lab-$RANDOM --resource-group $rg \
+--template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeployv3.json \
+--parameters deployHubERGateway=true Restrict_SSH_VM_AccessByPublicIP=$mypip Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
+--output none \
+--no-wait
+
+#Emulated On-prem in Azure
+rg=lab-ipsec-er
+onpremname=onprem
+
+# Deploying OPNsense NVA1 on the onprem (emulate ISaaS onprem side)
+echo "Deploying OPNsense NVA1 on the onprem (emulate ISaaS onprem side)"
+ShellScriptName=configureopnsense.sh
+scenarioOption="TwoNics"
+virtualMachineSize=Standard_B2s
+virtualMachineName=$onpremname-opnnva
+virtualNetworkName=$onpremname-vnet
+existingvirtualNetwork=new
+VNETAddress=10.100.0.0/24 
+UntrustedSubnetCIDR=10.100.0.0/28
+TrustedSubnetCIDR=10.100.0.16/28
+GatewaySubnet=10.100.0.32/27
+subnet1=10.100.0.96/27
+subnet2=10.100.0.160/27
+existingUntrustedSubnetName=untrusted
+existingTrustedSubnetName=trusted
+
+az vm image terms accept --urn thefreebsdfoundation:freebsd-13_0:13_0-release:13.0.0 -o none
+az deployment group create --name onprem-nva-$RANDOM --resource-group $rg \
+--template-uri "https://raw.githubusercontent.com/dmauser/opnazure/master/ARM/main.json" \
+--parameters scenarioOption=$scenarioOption virtualMachineName=$virtualMachineName virtualMachineSize=$virtualMachineSize existingvirtualNetwork=$existingvirtualNetwork VNETAddress="[\"$VNETAddress\"]" virtualNetworkName=$virtualNetworkName UntrustedSubnetCIDR=$UntrustedSubnetCIDR TrustedSubnetCIDR=$TrustedSubnetCIDR existingUntrustedSubnetName=$existingUntrustedSubnetName existingTrustedSubnetName=$existingTrustedSubnetName Location=$location \
+--no-wait
+
+# Deply On-premises VM:
+# Subnet1
+az network vnet subnet create -g $rg --vnet-name $onpremname-vnet -n subnet1 --address-prefixes $subnet1  --output none
+az vm create -n $onpremname-vm1  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet subnet1 --vnet-name $onpremname-vnet --admin-username $username --admin-password $password --nsg "" --no-wait
+# Associate NSG
+az network vnet subnet update -g $rg --name subnet1 --vnet-name $onpremname-vnet --network-security-group $location-default-nsg -o none
+
+# Subnet2
+az network vnet subnet create -g $rg --vnet-name $onpremname-vnet -n subnet2 --address-prefixes $subnet2  --output none
+az vm create -n $onpremname-vm2  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet subnet2 --vnet-name $onpremname-vnet --admin-username $username --admin-password $password --nsg "" --no-wait
+# Associate NSG
+az network vnet subnet update -g $rg --name subnet2 --vnet-name $onpremname-vnet --network-security-group $location-default-nsg -o none
+
+# Deply Azure Spoke2 VM on Subnet2:
+az network vnet subnet create -g $rg --vnet-name $onpremname-vnet -n subnet1 --address-prefixes $subnet1  --output none
+az vm create -n $onpremname-vm1  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet subnet1 --vnet-name $onpremname-vnet --admin-username $username --admin-password $password --nsg "" --no-wait
+# Associate NSG
+az network vnet subnet update -g $rg --name subnet1 --vnet-name $onpremname-vnet --network-security-group $location-default-nsg -o none
+
+
+# Create VPNGW Zonal Azure side.
+#Variables
+gwsize=VpnGw1AZ
+
+#Active/Passive
+az network public-ip create --name $AzurehubName-vpngw-pip1 --resource-group $rg --sku Standard --zone 1 2 3 --location $location -o none
+az network vnet-gateway create --name $AzurehubName-vpngw --public-ip-address $AzurehubName-vpngw-pip1 \
+--resource-group $rg \
+--vnet $AzurehubName-vnet \
+--gateway-type Vpn \
+--vpn-type RouteBased \
+--sku $gwsize \
+--no-wait
+
+# Enable Private IP VPN Gateway (check for AZ CLI command or RESTAPI)
+
+#Create ExpressRoute Gateway
+az network vnet subnet create --address-prefix $GatewaySubnet --name GatewaySubnet -g $rg --vnet-name $onpremname-vnet --output none
+az network public-ip create --name $onpremname-ergw-pip --resource-group $rg --location $location -o none
+az network vnet-gateway create --name $onpremname-ergw --resource-group $rg --location $location --public-ip-address $onpremname-ergw-pip --vnet $onpremname-vnet --gateway-type "ExpressRoute" --sku "Standard" --no-wait
+
+# ExpressRoute Circuits
+
+# Specify the resource group
+ercircuit1name=ER-$AzurehubName-Circuit
+provider='Megaport' #Specify you service provider. You can use command "az network express-route list-service-providers -o table" to get a full list of the ExpressRoute Service Providers
+asn=65010 #Specify an ASN
+primaryPeerAddressPrefix='172.11.0.0/30' #Set the primary connection /30 range
+secondaryPeerAddressPrefix='172.11.0.4/30' #Set the secondary connection /30 range
+peeringlocation=Dallas #For a list of all locations see https://aka.ms/erlocations per provider.
+bandwidthInMbps=50 #Set Circuit bandwidth between 50 and 10000 (10Gbps).
+sku=Standard # You can set Local (over 1Gbps), Standard and Premium SKUs.
+
+# Create ER Circuit
+az deployment group create \
+--resource-group $rg \
+--template-uri https://raw.githubusercontent.com/dmauser/azure-expressroute-deploy/main/ercircuit.json \
+--parameters ercircuitname=$ercircuitname asn=$asn primaryPeerAddressPrefix=$primaryPeerAddressPrefix secondaryPeerAddressPrefix=$secondaryPeerAddressPrefix provider=$provider peeringlocation=$peeringlocation bandwidthInMbps=$bandwidthInMbps sku=$sku
+
+# Specify the resource group
+ercircuit2name=ER-$onpremname-Circuit
+provider='Megaport' #Specify you service provider. You can use command "az network express-route list-service-providers -o table" to get a full list of the ExpressRoute Service Providers
+asn=65010 #Specify an ASN
+primaryPeerAddressPrefix='172.10.0.0/30' #Set the primary connection /30 range
+secondaryPeerAddressPrefix='172.10.0.4/30' #Set the secondary connection /30 range
+peeringlocation=Dallas #For a list of all locations see https://aka.ms/erlocations per provider.
+bandwidthInMbps=50 #Set Circuit bandwidth between 50 and 10000 (10Gbps).
+sku=Standard # You can set Local (over 1Gbps), Standard and Premium SKUs.
+
+# Create ER Circuit
+az deployment group create \
+--resource-group $rg \
+--template-uri https://raw.githubusercontent.com/dmauser/azure-expressroute-deploy/main/ercircuit.json \
+--parameters ercircuitname=$ercircuitname asn=$asn primaryPeerAddressPrefix=$primaryPeerAddressPrefix secondaryPeerAddressPrefix=$secondaryPeerAddressPrefix provider=$provider peeringlocation=$peeringlocation bandwidthInMbps=$bandwidthInMbps sku=$sku
+
+# Connect ExpressRoute Circuits to the Gateways.
+# Azure
+erid=$(az network express-route show -n $ercircuit1name -g $rg --query id -o tsv) 
+az network vpn-connection create --name Connection-to-$AzurehubName \
+--resource-group $rg --vnet-gateway1 $AzurehubName-ergw \
+--express-route-circuit2 $erid \
+--routing-weight 0 \
+--output none
+
+# On-premises
+erid=$(az network express-route show -n $ercircuit2name -g $rg --query id -o tsv) 
+az network vpn-connection create --name Connection-to-$onpremname \
+--resource-group $rg --vnet-gateway1 $onpremname-ergw \
+--express-route-circuit2 $erid \
+--routing-weight 0 \
+--output none
+
+#Enable boot diagnostics for all VMs in the resource group (Serial console)
+let "randomIdentifier=$RANDOM*$RANDOM" #used to create unique storage account name.
+#Create Storage Account (boot diagnostics + serial console)
+az storage account create -n sc$randomIdentifier -g $rg -l $location --sku Standard_LRS -o none
+#Enable boot diagnostics
+stguri=$(az storage account show -n sc$randomIdentifier -g $rg --query primaryEndpoints.blob -o tsv)
+az vm boot-diagnostics enable --storage $stguri --ids $(az vm list -g $rg --query "[].id" -o tsv) -o none
+
+### Installing tools for networking connectivity validation such as traceroute, tcptraceroute, iperf and others (check link below for more details) 
+echo Installing tools for networking connectivity validation such as traceroute, tcptraceroute, iperf and others  
+nettoolsuri="https://raw.githubusercontent.com/dmauser/azure-vm-net-tools/main/script/nettools.sh"
+for vm in `az vm list -g $rg --query "[?storageProfile.imageReference.offer=='UbuntuServer'].name" -o tsv`
+do
+ az vm extension set \
+ --resource-group $rg \
+ --vm-name $vm \
+ --name customScript \
+ --publisher Microsoft.Azure.Extensions \
+ --protected-settings "{\"fileUris\": [\"$nettoolsuri\"],\"commandToExecute\": \"./nettools.sh\"}" \
+ --no-wait
+done
+
+# Dump ER Routes:
+
+# Dump ER Circuit routes
+#ExpressRoute Circuit Route Table
+# Azure Circuit
+az network express-route list-route-tables --path primary -n $ercircuit1name -g $rg  --peering-name AzurePrivatePeering --query value -o table
+# On-prem Circuit
+az network express-route list-route-tables --path primary -n $ercircuit2name -g $rg  --peering-name AzurePrivatePeering --query value -o table
