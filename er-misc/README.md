@@ -15,7 +15,7 @@ for location in $locations
 done
 ```
 
-Sample output: ![](./files/er-direct-output.txt)
+Sample script [output](https://raw.githubusercontent.com/dmauser/azure-expressroute/main/er-misc/files/er-direct-output.txt).
 
 #### Dump ExpressRoute route table (Private Peering):
 
