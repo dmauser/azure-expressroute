@@ -7,7 +7,7 @@
 - [Overprovisioning ER Circuits on top of ER Direct ports](#overprovisioning-er-circuits-on-top-of-er-direct-ports)
 
 
-#### ER Direct Ports bandwidth availability
+### ER Direct Ports bandwidth availability
 
  List available bandwidths in all ER Direct locations:
 
@@ -23,7 +23,7 @@ done
 
 Sample script [output](https://raw.githubusercontent.com/dmauser/azure-expressroute/main/er-misc/files/er-direct-output.txt).
 
-#### Dump ExpressRoute route table (Private Peering)
+### Dump ExpressRoute route table (Private Peering)
 
 ```Bash
 # Dump ER Circuit routes
@@ -36,7 +36,7 @@ az network express-route list-route-tables --path primary -n $ercircuit -g $rg  
 az network express-route list-route-tables --path secondary -n $ercircuit -g $rg  --peering-name AzurePrivatePeering --query value -o table
 ```
 
-#### Overprovisioning ER Circuits on top of ER Direct ports
+### Overprovisioning ER Circuits on top of ER Direct ports
 
 Before continuing, please review the official [ER Direct documentation](https://aka.ms/erdirect)
 
