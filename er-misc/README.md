@@ -38,23 +38,23 @@ az network express-route list-route-tables --path secondary -n $ercircuit -g $rg
 
 #### Overprovisioning ER Circuits (ER Direct only)
 
-Please, review official [ER Direct documentation](https://aka.ms/erdirect)
+Before continuing, please review the official [ER Direct documentation](https://aka.ms/erdirect)
 
 Here are some considerations:
 - ExpressRoute Direct supports an overprovision factor of 2X. Customers can configure up to 20Gb of ExpressRoute circuits on a 10G ExpressRoute Direct and 200G of circuits on a 100G ExpressRoute Direct.
 
-- Note that Azure Portal only allows you to create ExpressRoute circuits up to the ER Direct bandwith interface. In order to overprovisioning beyond 10G or 100G circuits you have to use CLI o Powershell.
+- Note that Azure Portal only allows you to create ExpressRoute circuits up to the ER Direct bandwidth interface. To overprovision beyond 10G or 100G circuits, you have to use CLI o PowerShell.
 
 **Sample CLI Script**
 
-The CLI script (Bash) below demonstrates on how to overprivsion ER circuits up to 17G on top of 10G ER Direct.
+The CLI script (Bash) below demonstrates how to overprovision ER circuits up to 17G on top of 10G ER Direct.
 
   1. Creates a 10G ER Direct port.
   2. Creates a 10G ER Circuit (example, dedicated to Production workload).
   3. Creates a 5G ER Circuit (example, UAT).
   4. Creates a 2G ER Circuit (example for Dev).
 
-   Note that 3G still available to get overprovisioned with either combination of two circuits (1G and 2G) or 3 circuits of 1G.
+   Note that 3G remains to get overprovisioned with either combination of two circuits (1G and 2G) or three circuits of 1G.
 
 ```Bash
 #Variables
@@ -122,5 +122,4 @@ Name                   Gbps    ErDirectPort
 ER-Circuit-DEV         2.0     /subscriptions/SubID/resourceGroups/er-circuits/providers/Microsoft.Network/expressRoutePorts/ER-Direct-Test
 ER-Circuit-Production  10.0    /subscriptions/SubID/resourceGroups/er-circuits/providers/Microsoft.Network/expressRoutePorts/ER-Direct-Test
 ER-Circuit-UAT         5.0     /subscriptions/SubID/resourceGroups/er-circuits/providers/Microsoft.Network/expressRoutePorts/ER-Direct-Test
-
 ```
