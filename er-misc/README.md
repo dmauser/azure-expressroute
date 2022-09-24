@@ -4,7 +4,7 @@
 
 - [ER Direct Ports bandwidth availability](#er-direct-ports-bandwidth-availability)
 - [Dump ExpressRoute route table (Private Peering)](#dump-expressroute-route-table-private-peering)
-- [ER Direct Ports and ]
+- [Overprovisioning ER Circuits on top of ER Direct ports](#overprovisioning-er-circuits-on-top-of-er-direct-ports)
 
 
 #### ER Direct Ports bandwidth availability
@@ -36,7 +36,7 @@ az network express-route list-route-tables --path primary -n $ercircuit -g $rg  
 az network express-route list-route-tables --path secondary -n $ercircuit -g $rg  --peering-name AzurePrivatePeering --query value -o table
 ```
 
-#### Overprovisioning ER Circuits (ER Direct only)
+#### Overprovisioning ER Circuits on top of ER Direct ports
 
 Before continuing, please review the official [ER Direct documentation](https://aka.ms/erdirect)
 
@@ -50,9 +50,9 @@ Here are some considerations:
 The CLI script (Bash) below demonstrates how to overprovision ER circuits up to 17G on top of 10G ER Direct.
 
   1. Creates a 10G ER Direct port.
-  2. Creates a 10G ER Circuit (example, dedicated to Production workload).
-  3. Creates a 5G ER Circuit (example, UAT).
-  4. Creates a 2G ER Circuit (example for Dev).
+  2. Creates a 10G ER Circuit for Production.
+  3. Creates a 5G ER Circuit for UAT.
+  4. Creates a 2G ER Circuit for Dev.
 
    Note that 3G remains to get overprovisioned with either combination of two circuits (1G and 2G) or three circuits of 1G.
 
