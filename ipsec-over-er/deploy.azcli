@@ -84,7 +84,6 @@ az vm create -n $onpremname-vm1  -g $rg --image ubuntults --public-ip-sku Standa
 # Associate NSG
 az network vnet subnet update -g $rg --name subnet1 --vnet-name $onpremname-vnet --network-security-group $location-default-nsg -o none
 
-
 # Create VPNGW Zonal Azure side.
 #Variables
 gwsize=VpnGw1AZ
