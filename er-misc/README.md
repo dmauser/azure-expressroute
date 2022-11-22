@@ -1,4 +1,4 @@
-# Miscellaneous ER scripts
+# ER miscellaneous scripts
 
 **Content**
 
