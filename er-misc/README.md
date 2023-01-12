@@ -12,7 +12,7 @@
  List available bandwidths in all ER Direct locations:
 
 ```Bash
-locations=$(az network express-route port location list --query [].name --output tsv)
+locations=($(az network express-route port location list --query "[].name" --output tsv))
 for location in $locations
  do
  az network express-route port location show --location $location \
