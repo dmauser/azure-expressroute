@@ -17,8 +17,8 @@ az account set --name <Add You Subscription Name> #Select your subscription
 rg=lab-ars-er-transit #Define your resource group
 location=centralus #Set Region
 mypip=$(curl -4 ifconfig.io -s) #Captures your local Public IP and adds it to NSG to restrict access to SSH only for your Public IP.
-remotebranch1=10.154.0.0/24 #Emulated AVS
-remotebranch2=10.120.32.0/22 # On-premises
+remotebranch1=10.45.0.0/22 #Emulated AVS
+remotebranch2=10.120.0.0/24 # On-premises
 
 #Define parameters for Azure Hub and Spokes:
 AzurehubName=Az-Hub #Azure Hub Name
@@ -58,7 +58,7 @@ az storage account create -n sc$randomIdentifier -g $rg -l $location --sku Stand
 stguri=$(az storage account show -n sc$randomIdentifier -g $rg --query primaryEndpoints.blob -o tsv)
 az vm boot-diagnostics enable --storage $stguri --ids $(az vm list -g $rg --query "[].id" -o tsv) -o none
 
-#Deploy OPNSense NVA
+# Deploy OPNSense NVA
 # Removes AzureFirewall Subnet and adds untrusted/trusted subnets
 # 
 az network vnet subnet delete --name AzureFirewallSubnet --resource-group $rg --vnet-name $AzurehubName-vnet --output none
@@ -66,15 +66,36 @@ az network vnet subnet create --address-prefix $AzureHubTrustedSubnet --name tru
 az network vnet subnet create --address-prefix $AzureHubUntrustedSubnet --name untrusted --resource-group $rg --vnet-name $AzurehubName-vnet --output none
 
 # Deploy OPNsense NVA1
-az deployment group create --name $AzurehubName-nva1-$RANDOM --resource-group $rg \
---template-uri "https://raw.githubusercontent.com/dmauser/opnazure/master/ARM/main-two-nics.json" \
---parameters virtualMachineSize=Standard_B2s virtualMachineName=$AzurehubName-nva1 TempUsername=azureuser TempPassword=Msft123Msft123 existingVirtualNetworkName=$AzurehubName-vnet existingUntrustedSubnet=untrusted existingTrustedSubnet=trusted PublicIPAddressSku=Standard \
+OpnScriptURI=https://raw.githubusercontent.com/dmauser/opnazure/master/scripts/
+ShellScriptName=configureopnsense.sh
+scenarioOption="TwoNics"
+virtualMachineName=$(echo $AzurehubName-nva1)
+virtualNetworkName=$(echo $AzurehubName-vnet)
+existingvirtualNetwork=existing
+existingUntrustedSubnetName=untrusted
+existingTrustedSubnetName=trusted
+
+az vm image terms accept --urn thefreebsdfoundation:freebsd-13_0:13_0-release:13.0.0 -o none
+az deployment group create --name $virtualMachineName-$RANDOM --resource-group $rg \
+--template-uri "https://raw.githubusercontent.com/dmauser/opnazure/master/ARM/main.json" \
+--parameters OpnScriptURI=$OpnScriptURI scenarioOption=$scenarioOption virtualMachineName=$virtualMachineName existingvirtualNetwork=$existingvirtualNetwork virtualNetworkName=$virtualNetworkName existingUntrustedSubnetName=$existingUntrustedSubnetName existingTrustedSubnetName=$existingTrustedSubnetName Location=$location \
 --no-wait
 
+
 # Deploy OPNsense NVA2
-az deployment group create --name $AzurehubName-nva2-$RANDOM --resource-group $rg \
---template-uri "https://raw.githubusercontent.com/dmauser/opnazure/master/ARM/main-two-nics.json" \
---parameters virtualMachineSize=Standard_B2s virtualMachineName=$AzurehubName-nva2 TempUsername=azureuser TempPassword=Msft123Msft123 existingVirtualNetworkName=$AzurehubName-vnet existingUntrustedSubnet=untrusted existingTrustedSubnet=trusted PublicIPAddressSku=Standard \
+OpnScriptURI=https://raw.githubusercontent.com/dmauser/opnazure/master/scripts/
+ShellScriptName=configureopnsense.sh
+scenarioOption="TwoNics"
+virtualMachineName=$(echo $AzurehubName-nva2)
+virtualNetworkName=$(echo $AzurehubName-vnet)
+existingvirtualNetwork=existing
+existingUntrustedSubnetName=untrusted
+existingTrustedSubnetName=trusted
+
+az vm image terms accept --urn thefreebsdfoundation:freebsd-13_0:13_0-release:13.0.0 -o none
+az deployment group create --name $virtualMachineName-$RANDOM --resource-group $rg \
+--template-uri "https://raw.githubusercontent.com/dmauser/opnazure/master/ARM/main.json" \
+--parameters OpnScriptURI=$OpnScriptURI scenarioOption=$scenarioOption virtualMachineName=$virtualMachineName existingvirtualNetwork=$existingvirtualNetwork virtualNetworkName=$virtualNetworkName existingUntrustedSubnetName=$existingUntrustedSubnetName existingTrustedSubnetName=$existingTrustedSubnetName Location=$location \
 --no-wait
 
 # Create Load Balancer
@@ -118,14 +139,14 @@ az deployment group create \
 
 #Connect both ER Circuit to Hub ExpressRoute Gateway
 
-erid=$(az network express-route show -n ER-CHI-OnPrem-Circuit -g $rg --query id -o tsv) 
-az network vpn-connection create --name Connection-to-CHI-OnPrem \
+erid=$(az network express-route show -n ER-DAL-AVS-Circuit -g $rg --query id -o tsv) 
+az network vpn-connection create --name Connection-to-DAL-AVS \
 --resource-group $rg --vnet-gateway1 $AzurehubName-ergw \
 --express-route-circuit2 $erid \
 --routing-weight 0
 
-erid=$(az network express-route show -n ER-DAL-AVS-Circuit -g $rg --query id -o tsv) 
-az network vpn-connection create --name Connection-to-DAL-AVS \
+erid=$(az network express-route show -n ER-CHI-OnPrem-Circuit -g $rg --query id -o tsv) 
+az network vpn-connection create --name Connection-to-CHI-OnPrem \
 --resource-group $rg --vnet-gateway1 $AzurehubName-ergw \
 --express-route-circuit2 $erid \
 --routing-weight 0
@@ -227,33 +248,34 @@ mypip=$(curl -4 ifconfig.io -s) #Gets your Home Public IP or replace with that i
 
 # Define your variables
 project=angular-expanse-327722 #Set your project Name. Get your PROJECT_ID use command: gcloud projects list 
-region=us-central1 #Set your region. Get Regions/Zones Use command: gcloud compute zones list
-zone=us-central1-c # Set availability zone: a, b or c.
-vpcrange=10.112.8.0/24
+region=us-south1 #Set your region. Get Regions/Zones Use command: gcloud compute zones list
+zone=us-south1-a # Set availability zone: a, b or c.
+vpcrange=10.120.0.0/24
 envname=onprem-chi
 vmname=vm1
 mypip=$(curl -4 ifconfig.io -s) #Gets your Home Public IP or replace with that information. It will add it to the NVA Rule.
 
 ### Ran the commands below two using the variables:
 
-#Create VPC
-sudo gcloud compute networks create $envname-vpc --project=$project --subnet-mode=custom --mtu=1460 --bgp-routing-mode=regional
-sudo gcloud compute networks subnets create $envname-subnet --project=$project --range=$vpcrange --network=$envname-vpc --region=$region
+#Create VPC + Subnet
+gcloud config set project $project
+gcloud compute networks create $envname-vpc --subnet-mode=custom --mtu=1460 --bgp-routing-mode=regional
+gcloud compute networks subnets create $envname-subnet --range=$vpcrange --network=$envname-vpc --region=$region
 
-#Create NVA Rule
-sudo gcloud compute firewall-rules create $envname-allow-traffic-from-azure --network $envname-vpc --allow tcp,udp,icmp --source-ranges 192.168.0.0/16,10.0.0.0/8,172.16.0.0/16,35.235.240.0/20,$mypip/32
+#Create Firewall Rule
+gcloud compute firewall-rules create $envname-allow-traffic-from-azure --network $envname-vpc --allow tcp,udp,icmp --source-ranges 192.168.0.0/16,10.0.0.0/8,172.16.0.0/16,35.235.240.0/20,$mypip/32
 
 #Create Unbutu VM:
-sudo gcloud compute instances create $envname-vm1 --project=$project --zone=$zone --machine-type=f1-micro --network-interface=subnet=$envname-subnet,network-tier=PREMIUM --image=ubuntu-1804-bionic-v20220126 --image-project=ubuntu-os-cloud --boot-disk-size=10GB --boot-disk-type=pd-balanced --boot-disk-device-name=$envname-vm1 
+gcloud compute instances create $envname-vm1 --zone=$zone --machine-type=e2-micro --network-interface=subnet=$envname-subnet,network-tier=PREMIUM --image-family=ubuntu-1804-lts --image-project=ubuntu-os-cloud --boot-disk-size=10GB --boot-disk-type=pd-balanced --boot-disk-device-name=$envname-vm1 
+#gcloud compute instances create $envname-vm1 --zone=$zone --machine-type=f1-micro --network-interface=subnet=$envname-subnet,network-tier=PREMIUM --image=ubuntu-1804-bionic-v20220126 --image-project=ubuntu-os-cloud --boot-disk-size=10GB --boot-disk-type=pd-balanced --boot-disk-device-name=$envname-vm1 
+#gcloud compute instances create $envname-vm1 --zone=$zone --machine-type=f1-micro --network-interface=subnet=$envname-subnet,network-tier=PREMIUM --image-family=ubuntu-1804-lts-arm64 --image-project=ubuntu-os-cloud --boot-disk-size=10GB --boot-disk-type=pd-balanced --boot-disk-device-name=$envname-vm1 
 
 #Cloud Router: #***********Validate************
-sudo gcloud compute routers create $envname-router --project=$project --region=$region --network=$envname-vpc --asn=16550
+gcloud compute routers create $envname-router --region=$region --network=$envname-vpc --asn=16550
 
 #DirectConnect via MegaPort:
-sudo gcloud compute interconnects attachments partner create $envname-vlan --region $region --edge-availability-domain availability-domain-1 --router $envname-router --admin-enabled
+gcloud compute interconnects attachments partner create $envname-vlan --region $region --edge-availability-domain availability-domain-1 --router $envname-router --admin-enabled
 
-# Get the pair key on the output above to setup connection with Megaport
-sudo gcloud compute interconnects attachments describe $envname-vlan --region $region
 
 ## Validations
 
