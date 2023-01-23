@@ -6,7 +6,6 @@
 - [Dump ExpressRoute route table (Private Peering)](#dump-expressroute-route-table-private-peering)
 - [Overprovisioning ER Circuits on top of ER Direct ports](#overprovisioning-er-circuits-on-top-of-er-direct-ports)
 
-
 ### ER Direct Ports bandwidth availability
 
 
@@ -33,6 +32,7 @@ done
 fi
 
 locations=$(az network express-route port location list --query [].name --output tsv)
+locations=($(az network express-route port location list --query "[].name" --output tsv))
 for location in $locations
  do
  az network express-route port location show --location $location \
