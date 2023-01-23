@@ -9,9 +9,29 @@
 
 ### ER Direct Ports bandwidth availability
 
- List available bandwidths in all ER Direct locations:
+
+List available bandwidths in all ER Direct locations:
+
+**Note:** use Bash to run the scripts below. They will not work over PowerShell.
+Alternatively, you can use [Azure Cloud Shell Bash](https://shell.azure.com/)
 
 ```Bash
+#!/bin/bash
+### ER Direct Ports bandwidth availability
+
+# Validate AllowExpressRoutePorts feature
+state=$(az feature show --name AllowExpressRoutePorts --namespace Microsoft.Network --query properties.state -o tsv)
+if [ $state != Registered ]
+then 
+ az feature register --name AllowExpressRoutePorts --namespace Microsoft.Network --output none
+ while [[ $prState != 'Registered' ]];
+ do
+    prState=$(az feature show --name AllowExpressRoutePorts --namespace Microsoft.Network --query properties.state -o tsv)
+    echo "AllowExpressRoutePorts provisioningState="$prState
+    sleep 5
+done
+fi
+
 locations=$(az network express-route port location list --query [].name --output tsv)
 for location in $locations
  do
