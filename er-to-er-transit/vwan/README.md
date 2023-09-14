@@ -1,6 +1,6 @@
 # ER to ER transit using vWAN + Azure Firewall with Routing Intent
 
-## _Coming soon..._
+## Please see more details about this sceanario in [AVS (ER) to On-prem (ER) transit using Secured-vHub+Routing Intent](https://github.com/dmauser/azure-vmware-solution#lab1-avs-er-to-on-prem-er-transit-using-secured-vhubrouting-intent)
 
 ## Architecture diagram
 
