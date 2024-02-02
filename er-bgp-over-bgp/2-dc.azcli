@@ -1,0 +1,190 @@
+# Pre-Requisites
+
+#Parameters
+location=southcentralus
+rg=lab-er-bgp
+username=azureuser
+password="Msft123Msft123" #Please change your password
+vmsize=Standard_DS1_v2 #VM Size
+mypip=$(curl -4 ifconfig.io -s) #Replace with your home Public IP in case you run this over Cloudshell
+
+# OPNsense NVA1 parameters
+ShellScriptName=configureopnsense.sh
+scenarioOption="TwoNics"
+virtualMachineSize=Standard_DS1_v2
+virtualMachineName=branch-opnnva
+branchvnet=branch-vnet
+existingvirtualNetwork=new
+VNETAddress=10.100.0.0/24 
+UntrustedSubnetCIDR=10.100.0.0/28
+TrustedSubnetCIDR=10.100.0.16/28
+GatewaySubnet=10.100.0.32/27
+RouteServerSubnet=10.100.0.128/27
+subnet1=10.100.0.96/27
+subnet2=10.100.0.160/27
+existingUntrustedSubnetName=untrusted
+existingTrustedSubnetName=trusted
+
+#ExpressRoute specific variables
+ername2="branch-er-circuit"
+perloc2="Chicago"
+providerloc2=Megaport
+
+echo "Deploying OPNsense NVA1 on the branch"
+az vm image terms accept --urn thefreebsdfoundation:freebsd-13_0:13_0-release:13.0.0 -o none
+az deployment group create --name branch-nva-$RANDOM --resource-group $rg \
+--template-uri "https://raw.githubusercontent.com/dmauser/opnazure/master/ARM/main.json" \
+--parameters scenarioOption=$scenarioOption virtualMachineName=$virtualMachineName virtualMachineSize=$virtualMachineSize existingvirtualNetwork=$existingvirtualNetwork VNETAddress="[\"$VNETAddress\"]" branchvnet=$branchvnet UntrustedSubnetCIDR=$UntrustedSubnetCIDR TrustedSubnetCIDR=$TrustedSubnetCIDR existingUntrustedSubnetName=$existingUntrustedSubnetName existingTrustedSubnetName=$existingTrustedSubnetName Location=$location \
+--no-wait
+
+sleep 5
+echo Checking Branch VNET provisioning state
+prState=''
+while [[ $prState != 'Succeeded' ]];
+do
+    prState=$(az network vnet show -n $branchvnet -g $rg  --query 'provisioningState' -o tsv)
+    echo "Branch VNET provisioning state provisioningState="$prState
+    sleep 5
+done
+
+echo Associating NSG on Spokes and Branch VNETs
+#Updating NSGs:
+az network nsg rule create -g $rg --nsg-name $location-default-nsg -n 'default-allow-https' --direction Inbound --priority 310 --source-address-prefixes $mypip --source-port-ranges '*' --destination-address-prefixes '*' --destination-port-ranges 443 --access Allow --protocol Tcp --description "Allow inbound HTTPS" --output none
+az network nsg rule create -g $rg --nsg-name $location-default-nsg -n 'default-allow-vnetoutany' --direction Inbound --priority 320 --source-address-prefixes VirtualNetwork --source-port-ranges '*' --destination-address-prefixes '*' --destination-port-ranges '*' --access Allow --protocol '*' --description "Allow inbound VNET to Any for NVA Routing out" --output none
+# Associating NSG to the VNET subnets (Spokes and Branches)
+az network vnet subnet update --name subnet1 --resource-group $rg --vnet-name $branchvnet --network-security-group $location-default-nsg -o none
+
+#Create ER circuits
+echo Creating ExpressRoute Circuits
+az network express-route create --bandwidth 50 -n $ername2 --peering-location "$perloc2" -g $rg --provider $providerloc2 -l $location --sku-family MeteredData --sku-tier Standard -o none &>/dev/null &
+
+echo Creating Branch VMs...
+# Deploy branch VM:
+# Subnet1
+az network vnet subnet create -g $rg --vnet-name $branchvnet -n subnet1 --address-prefixes $subnet1  --output none
+az vm create -n branch-vm1  -g $rg --image Ubuntu2204 --public-ip-sku Standard --size $vmsize -l $location --subnet subnet1 --vnet-name $branchvnet --admin-username $username --admin-password $password --nsg "" --no-wait --only-show-errors
+
+#Create Route Server
+echo Creating Branch Route Server
+az network vnet subnet create --address-prefix $RouteServerSubnet --name RouteServerSubnet -g $rg --vnet-name $branchvnet --output none
+subnetid=$(az network vnet subnet show --name RouteServerSubnet -g $rg --vnet-name $branchvnet --query id -o tsv)
+az network public-ip create --name branch-rs-pip --resource-group $rg --location $location -o none
+az network routeserver create --name branch-rs --resource-group $rg --location $location --public-ip-address branch-rs-pip --hosted-subnet $subnetid &>/dev/null &
+
+#Create ExpressRoute Gateway
+echo Creating Branch ExpressRoute Gateway
+az network vnet subnet create --address-prefix $GatewaySubnet --name GatewaySubnet -g $rg --vnet-name $branchvnet --output none
+az network public-ip create --name branch-ergw-pip --resource-group $rg --location $location -o none
+az network vnet-gateway create --name branch-ergw --resource-group $rg --location $location --public-ip-address branch-ergw-pip --vnet $branchvnet --gateway-type "ExpressRoute" --sku "Standard" --no-wait
+
+# Loop script to check ER Gateways provisioning state
+echo Validating ER Gateways provisioning...
+prState=''
+while [[ $prState != 'Succeeded' ]];
+do
+    prState=$(az network vnet-gateway show -n branch-ergw -g $rg --query 'provisioningState' -o tsv)
+    echo "Branch ER Gateway provisioning state provisioningState="$prState
+    sleep 5
+done
+
+echo Adjusting OPNsense NSGs
+echo Checking subnet status...
+prState=''
+while [[ $prState != 'Succeeded' ]];
+do
+    prState=$(az network vnet subnet show --name Trusted-Subnet -g $rg --vnet-name $branchvnet --query provisioningState -o tsv)
+    echo Trusted subnet "provisioningState="$prState
+    sleep 5
+done
+prState=''
+while [[ $prState != 'Succeeded' ]];
+do
+    prState=$(az network vnet subnet show --name Untrusted-Subnet -g $rg --vnet-name $branchvnet --query provisioningState -o tsv)
+    echo Unrusted subnet "provisioningState="$prState
+    sleep 5
+done
+
+
+# Enable routserver branch to branch
+az network routeserver update --name branch-rs --resource-group $rg --allow-b2b-traffic true --no-wait
+# Loop script to validate route server provisioning state
+echo Validating Route Server provisioning...
+prState=''
+while [[ $prState != 'Succeeded' ]];
+do
+    prState=$(az network routeserver show -n branch-rs -g $rg --query 'provisioningState' -o tsv)
+    echo "Route Server provisioning state provisioningState="$prState
+    sleep 5
+done
+
+# BGP peer OpnSense Trusted NIC private ip with Azure Route Server
+# Get OpnSense Trusted NIC private IP
+echo Getting OPNSense Trusted NIC private IP
+opnTrustedNicPrivateIp=$(az network nic show -g $rg -n $virtualMachineName-Trusted-NIC --query ipConfigurations[0].privateIPAddress -o tsv)
+echo Associating OPNSense Trusted NIC with Azure Route Server
+az network routeserver peering create --name branch-opnnva-rs-peer --resource-group $rg --routeserver branch-rs --peer-asn 65010 --peer-ip $opnTrustedNicPrivateIp --no-wait
+
+
+#echo Checking OPNSense provisioning state:
+# az deployment group show --name branch-opnnva-TwoNics -g $rg --query properties.provisioningState -o tsv
+# Misc remove NSG from OPNSense NICs 
+az network nic update -g $rg -n $virtualMachineName-Trusted-NIC --network-security-group null --output none
+az network nic update -g $rg -n $virtualMachineName-Untrusted-NIC --network-security-group null --output none
+# Ensure default NSG is associated to OPNSense Trusted and Untrusted Networks
+# az network vnet subnet update --id $(az network vnet subnet list -g $rg --vnet-name $branchvnet --query '[?contains(name,`'-Subnet'`)].id' -o tsv) --network-security-group "" -o none
+# az network vnet subnet update --id $(az network vnet subnet list -g $rg --vnet-name $branchvnet --query '[?contains(name,`'-Subnet'`)].id' -o tsv) --network-security-group $location-default-nsg -o none
+az network vnet subnet update --name Trusted-Subnet --resource-group $rg --vnet-name $branchvnet --network-security-group null  -o none
+az network vnet subnet update --name Untrusted-Subnet --resource-group $rg --vnet-name $branchvnet --network-security-group null  -o none
+az network vnet subnet update --name Trusted-Subnet --resource-group $rg --vnet-name $branchvnet --network-security-group $location-default-nsg -o none
+az network vnet subnet update --name Untrusted-Subnet --resource-group $rg --vnet-name $branchvnet --network-security-group $location-default-nsg -o none
+
+### Installing tools for networking connectivity validation such as traceroute, tcptraceroute, iperf and others (check link below for more details) 
+echo "Installing net utilities inside VMs (traceroute, tcptraceroute, iperf3, hping3, and others)"
+nettoolsuri="https://raw.githubusercontent.com/dmauser/azure-vm-net-tools/main/script/nettools.sh"
+for vm in `az vm list -g $rg --query "[?contains(storageProfile.imageReference.publisher,'Canonical')].name" -o tsv`
+do
+ az vm extension set --force-update \
+ --resource-group $rg \
+ --vm-name $vm \
+ --name customScript \
+ --publisher Microsoft.Azure.Extensions \
+ --protected-settings "{\"fileUris\": [\"$nettoolsuri\"],\"commandToExecute\": \"./nettools.sh\"}" \
+ --no-wait
+done
+
+#Enabling boot diagnostics for all VMs in the resource group (Serial console)
+echo Enabling boot diagnostics
+az vm boot-diagnostics enable --ids $(az vm list -g $rg --query '[].id' -o tsv) -o none
+echo Deployment has finished
+
+# Create and branch spokevnet
+echo Creating Branch Spoke VNET
+az network vnet create -g $rg -n branch-spoke-vnet --address-prefixes 10.110.0.0/24 -l $location --subnet-name subnet1 --subnet-prefixes 10.110.0.0/24 --output none
+
+# Peer Branch Spoke VNET with Branch VNET
+echo Peering Branch Spoke VNET with Branch VNET
+az network vnet peering create --name spoke-to-branch --resource-group $rg --vnet-name branch-vnet --remote-vnet branch-spoke-vnet --allow-vnet-access --allow-forwarded-traffic --output none
+az network vnet peering create --name branch-to-spoke --resource-group $rg --vnet-name branch-spoke-vnet  --remote-vnet branch-vnet --allow-vnet-access --allow-forwarded-traffic --output none
+
+# Create branch-spk-vm1 in the main subnet of branch-spoke-vnet
+echo Creating Branch Spoke VMs...
+az vm create -n branch-spk-vm1  -g $rg --image Ubuntu2204 --public-ip-sku Standard --size $vmsize -l $location --subnet subnet1 --vnet-name branch-spoke-vnet --admin-username $username --admin-password $password --nsg "" --no-wait --only-show-errors
+
+# Associate default NSG to the subnet1 of branch-spoke-vnet
+az network vnet subnet update --name subnet1 --resource-group $rg --vnet-name branch-spoke-vnet --network-security-group $location-default-nsg -o none
+
+# Add subent2 and subnet3 to the branch-spoke-vnet
+az network vnet subnet create --name subnet2 -g $rg --vnet-name branch-spoke-vnet --address-prefix 150.0.0.0/29 --output none
+az network vnet subnet create --name subnet3 -g $rg --vnet-name branch-spoke-vnet --address-prefix 150.0.0.8/29 --output none
+
+# Create branch-spk-vm1 in the main subnet of branch-spoke-vnet
+echo Creating Branch Spoke VMs...
+az vm create -n branch-spk-vm2  -g $rg --image Ubuntu2204 --public-ip-sku Standard --size $vmsize -l $location --subnet subnet2 --vnet-name branch-spoke-vnet --admin-username $username --admin-password $password --nsg "" --no-wait --only-show-errors
+az vm create -n branch-spk-vm3  -g $rg --image Ubuntu2204 --public-ip-sku Standard --size $vmsize -l $location --subnet subnet3 --vnet-name branch-spoke-vnet --admin-username $username --admin-password $password --nsg "" --no-wait --only-show-errors
+
+# Associate default NSG to the subnet2 and subnet 3 of branch-spoke-vnet
+az network vnet subnet update --name subnet2 --resource-group $rg --vnet-name branch-spoke-vnet --network-security-group $location-default-nsg -o none
+az network vnet subnet update --name subnet3 --resource-group $rg --vnet-name branch-spoke-vnet --network-security-group $location-default-nsg -o none
+# Associate udr to the subnet2 and subnet 3 of branch-spoke-vnet
+
+

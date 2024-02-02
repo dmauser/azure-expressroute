@@ -1,0 +1,179 @@
+# TODO1 - fix typo trusted
+# TODO2 - Breakdown SD-WAN and Firewall separated scripts
+
+#Parameters
+rg=lab-er-bgp #Define your resource group
+location=southcentralus #Set location
+username=azureuser #Set username
+password=Msft123Msft123 #Set password
+virtualMachineSize=Standard_DS1_v2 #Set VM size
+
+#ExpressRoute specific variables
+ername1="azure-er-circuit"
+perloc1="Chicago"
+providerloc1=Megaport
+
+#Variables
+mypip=$(curl -4 ifconfig.io -s) #Captures your local Public IP and adds it to NSG to restrict access to SSH only for your Public IP.
+
+#Define parameters for Azure Hub and Spokes:
+AzurehubName=az-hub #Azure Hub Name
+AzurehubaddressSpacePrefix=10.0.0.0/24 #Azure Hub VNET address space
+AzurehubNamesubnetName=subnet1 #Azure Hub Subnet name where VM will be provisioned
+Azurehubsubnet1Prefix=10.0.0.0/27 #Azure Hub Subnet address prefix
+AzurehubgatewaySubnetPrefix=10.0.0.32/27 #Azure Hub Gateway Subnet address prefix
+AzureFirewallPrefix=10.0.0.64/26 #Azure Firewall Prefix
+AzurehubrssubnetPrefix=10.0.0.128/27 #Azure Hub Route Server subnet address prefix
+AzureHubBastionSubnet=10.0.0.192/26
+Azurespoke1Name=az-spk11 #Azure Spoke 1 name
+Azurespoke1AddressSpacePrefix=10.0.1.0/24 # Azure Spoke 1 VNET address space
+Azurespoke1Subnet1Prefix=10.0.1.0/27 # Azure Spoke 1 Subnet1 address prefix
+Azurespoke2Name=az-spk12 #Azure Spoke 2 name
+Azurespoke2AddressSpacePrefix=10.0.2.0/24 # Azure Spoke 1 VNET address space
+Azurespoke2Subnet1Prefix=10.0.2.0/27 # Azure Spoke 1 VNET address space
+
+#Parsing parameters above in Json format (do not change)
+JsonAzure={\"hubName\":\"$AzurehubName\",\"addressSpacePrefix\":\"$AzurehubaddressSpacePrefix\",\"subnetName\":\"$AzurehubNamesubnetName\",\"subnet1Prefix\":\"$Azurehubsubnet1Prefix\",\"AzureFirewallPrefix\":\"$AzureFirewallPrefix\",\"gatewaySubnetPrefix\":\"$AzurehubgatewaySubnetPrefix\",\"rssubnetPrefix\":\"$AzurehubrssubnetPrefix\",\"bastionSubnetPrefix\":\"$AzureHubBastionSubnet\",\"spoke1Name\":\"$Azurespoke1Name\",\"spoke1AddressSpacePrefix\":\"$Azurespoke1AddressSpacePrefix\",\"spoke1Subnet1Prefix\":\"$Azurespoke1Subnet1Prefix\",\"spoke2Name\":\"$Azurespoke2Name\",\"spoke2AddressSpacePrefix\":\"$Azurespoke2AddressSpacePrefix\",\"spoke2Subnet1Prefix\":\"$Azurespoke2Subnet1Prefix\"}
+
+#Deploy base lab environment = Hub + VPN Gateway + VM and two Spokes with one VM on each.
+echo Deploying base lab: Hub with Spoke1 and 2. VMs and Azure Route Server.
+echo "*** It will take around 20 minutes to finish the deployment ***"
+az group create --name $rg --location $location --output none
+let "randomIdentifier=$RANDOM" 
+az deployment group create --name lab-$randomIdentifier --resource-group $rg \
+--template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeployv5.json \
+--parameters Restrict_SSH_VM_AccessByPublicIP=$mypip deployHubERGateway=true deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
+--no-wait \
+--output none
+
+# Loop script to check if deployment is completed with name that contains the name lab
+echo Checking deployment status...
+prState=''
+while [[ $prState != 'Succeeded' ]];
+do
+    prState=$(az deployment group show --name lab-$randomIdentifier --resource-group $rg --query properties.provisioningState -o tsv)
+    echo "ProvisioningState="$prState
+    sleep 5
+done
+
+#Create ER circuits
+echo Creating ExpressRoute Circuits
+az network express-route create --bandwidth 50 -n $ername1 --peering-location "$perloc1" -g $rg --provider $providerloc1 -l $location --sku-family MeteredData --sku-tier Standard -o none &>/dev/null &
+
+######### OPNsense SD-WAN parameters
+ShellScriptName=configureopnsense.sh
+scenarioOption="TwoNics"
+virtualMachineSize=Standard_DS1_v2
+virtualNetworkName=$AzurehubName-vnet
+existingvirtualNetwork=existing
+VNETAddress=10.0.0.0/24 
+UntrustedSubnetCIDR=10.0.0.64/28
+TrustedSubnetCIDR=10.0.0.80/28
+existingUntrustedSubnetName=untrusted
+existingTrustedSubnetName=trusted
+#OpnScriptURI=https://raw.githubusercontent.com/dmauser/azure-virtualwan/main/natvpn-over-er/opnsense/
+
+# Create untrusted subnetnet
+echo Creating untrusted subnet
+az network vnet subnet create -g $rg --vnet-name $AzurehubName-vnet --name $existingUntrustedSubnetName --address-prefixes $UntrustedSubnetCIDR --output none
+# Create trusted subnetnet
+echo Creating trusted subnet
+az network vnet subnet create -g $rg --vnet-name $AzurehubName-vnet --name $existingTrustedSubnetName --address-prefixes $TrustedSubnetCIDR --output none
+
+echo "Deploying OPNsense NVA1 on the $AzurehubName"
+nva1name=$AzurehubName-nva1
+az vm image terms accept --urn thefreebsdfoundation:freebsd-13_1:13_1-release:13.1.0 -o none
+az deployment group create --name $AzurehubName-nva-$RANDOM --resource-group $rg \
+--template-uri "https://raw.githubusercontent.com/dmauser/opnazure/master/ARM/main.json" \
+--parameters scenarioOption=$scenarioOption virtualMachineName=$nva1name virtualMachineSize=$virtualMachineSize existingvirtualNetwork=$existingvirtualNetwork VNETAddress="[\"$VNETAddress\"]" virtualNetworkName=$virtualNetworkName UntrustedSubnetCIDR=$UntrustedSubnetCIDR TrustedSubnetCIDR=$TrustedSubnetCIDR existingUntrustedSubnetName=$existingUntrustedSubnetName existingTrustedSubnetName=$existingTrustedSubnetName Location=$location \
+--no-wait
+
+nva2name=$AzurehubName-nva2
+echo "Deploying OPNsense NVA2 on the $AzurehubName"
+az vm image terms accept --urn thefreebsdfoundation:freebsd-13_1:13_1-release:13.1.0 -o none
+az deployment group create --name $AzurehubName-nva-$RANDOM --resource-group $rg \
+--template-uri "https://raw.githubusercontent.com/dmauser/opnazure/master/ARM/main.json" \
+--parameters scenarioOption=$scenarioOption virtualMachineName=$nva2name virtualMachineSize=$virtualMachineSize existingvirtualNetwork=$existingvirtualNetwork VNETAddress="[\"$VNETAddress\"]" virtualNetworkName=$virtualNetworkName UntrustedSubnetCIDR=$UntrustedSubnetCIDR TrustedSubnetCIDR=$TrustedSubnetCIDR existingUntrustedSubnetName=$existingUntrustedSubnetName existingTrustedSubnetName=$existingTrustedSubnetName Location=$location \
+--no-wait
+
+echo Adjusting OPNsense
+echo Checking subnet status...
+prState=''
+while [[ $prState != 'Succeeded' ]];
+do
+    prState=$(az network vnet subnet show --name trusted -g $rg --vnet-name $virtualNetworkName --query provisioningState -o tsv)
+    echo Trusted subnet "provisioningState="$prState
+    sleep 5
+done
+prState=''
+while [[ $prState != 'Succeeded' ]];
+do
+    prState=$(az network vnet subnet show --name untrusted -g $rg --vnet-name $virtualNetworkName --query provisioningState -o tsv)
+    echo Unrusted subnet "provisioningState="$prState
+    sleep 5
+done
+
+#echo Checking OPNSense provisioning state:
+# az deployment group show --name branch-opnnva-TwoNics -g $rg --query properties.provisioningState -o tsv
+# Misc remove NSG from OPNSense NICs 
+az network nic update -g $rg -n $nva1name-trusted-NIC --network-security-group null --output none
+az network nic update -g $rg -n $nva1name-untrusted-NIC --network-security-group null --output none
+az network nic update -g $rg -n $nva2name-trusted-NIC --network-security-group null --output none
+az network nic update -g $rg -n $nva2name-untrusted-NIC --network-security-group null --output none
+# Ensure default NSG is associated to OPNSense Trusted and Untrusted Networks
+# az network vnet subnet update --id $(az network vnet subnet list -g $rg --vnet-name $virtualNetworkName --query '[?contains(name,`'-Subnet'`)].id' -o tsv) --network-security-group "" -o none
+# az network vnet subnet update --id $(az network vnet subnet list -g $rg --vnet-name $virtualNetworkName --query '[?contains(name,`'-Subnet'`)].id' -o tsv) --network-security-group $location-default-nsg -o none
+az network vnet subnet update --name trusted --resource-group $rg --vnet-name $virtualNetworkName --network-security-group null  -o none
+az network vnet subnet update --name untrusted --resource-group $rg --vnet-name $virtualNetworkName --network-security-group null  -o none
+az network vnet subnet update --name trusted --resource-group $rg --vnet-name $virtualNetworkName --network-security-group $location-default-nsg -o none
+az network vnet subnet update --name untrusted --resource-group $rg --vnet-name $virtualNetworkName --network-security-group $location-default-nsg -o none
+
+# Add Rules to NSG
+az network nsg rule create -g $rg --nsg-name $location-default-nsg -n 'default-allow-https' --direction Inbound --priority 310 --source-address-prefixes $mypip --source-port-ranges '*' --destination-address-prefixes '*' --destination-port-ranges 443 --access Allow --protocol Tcp --description "Allow inbound HTTPS" --output none
+az network nsg rule create -g $rg --nsg-name $location-default-nsg -n 'default-allow-vnetoutany' --direction Inbound --priority 320 --source-address-prefixes VirtualNetwork --source-port-ranges '*' --destination-address-prefixes '*' --destination-port-ranges '*' --access Allow --protocol '*' --description "Allow inbound VNET to Any for NVA Routing out" --output none
+az network nsg rule create -g $rg --nsg-name $location-default-nsg  -n allow-udp500 --priority 330 --source-address-prefixes '*' --destination-address-prefixes '*' --destination-port-ranges 500 --direction Inbound --access Allow --protocol Udp -o none
+az network nsg rule create -g $rg --nsg-name $location-default-nsg  -n allow-udp4500 --priority 340 --source-address-prefixes '*' --destination-address-prefixes '*' --destination-port-ranges 4500 --direction Inbound --access Allow --protocol Udp -o none
+
+# Deploy Azure Load Balancer for nvas in the az-hub-vnet
+echo Deploying Azure Load Balancer for nvas in the $AzurehubName
+az network lb create -g $rg --name az-hub-nvalb --sku Standard --frontend-ip-name frontendip1 --backend-pool-name nvabackend --vnet-name $AzurehubName-vnet --subnet=trusted -o none
+az network lb probe create -g $rg --lb-name az-hub-nvalb --name sshprobe --protocol tcp --port 22 -o none
+az network lb rule create -g $rg --lb-name az-hub-nvalb --name haportrule --protocol all --frontend-ip-name frontendip1 --backend-pool-name nvabackend --probe-name sshprobe --frontend-port 0 --backend-port 0 -o none
+
+# Attach NVAs to the Backend as NICs
+nvanames=$(az vm list -g $rg --query '[?contains(name,`'hub-nva'`)].name' -o tsv)
+for nvaname in $nvanames
+do
+  az network nic ip-config address-pool add \
+  --address-pool nvabackend \
+  --ip-config-name ipconfig1 \
+  --nic-name $nvaname-trusted-NIC \
+  --resource-group $rg \
+  --lb-name az-hub-nvalb \
+  --output none
+done
+
+## Optional - This lab does not need ARS to be deployed
+
+AzurehubName=az-hub #Azure Hub Name
+asn_nva1=65004 # Set ASN
+
+# Peer with Route Server
+echo Peering NVAs with Route Server
+nva1names=$(az vm list -g $rg --query '[?contains(name,`'hub-nva'`)].name' -o tsv)
+for nvaintname in $nva1names
+do
+ #NVA BGP config variables (do not change)
+ routeserver_IP1=$(az network routeserver show --name az-hub-rs --resource-group $rg --query 'virtualRouterIps[0]' -o tsv)
+ routeserver_IP2=$(az network routeserver show --name az-hub-rs --resource-group $rg --query 'virtualRouterIps[1]' -o tsv)
+
+ # Building Route Server BGP Peering
+ echo Building BGP Peering between $AzurehubName-routeserver and $nvaintname
+ az network routeserver peering create --resource-group $rg --routeserver az-hub-rs --name $nvaintname --peer-asn $asn_nva1 \
+ --peer-ip $(az network nic show --name "$nvaintname"-Trusted-NIC --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv) \
+ --output none
+done
+
+# Enable Branch to Branch 
+echo Enabling ARS Branch to Branch
+az network routeserver update --resource-group $rg --name az-hub-rs --allow-b2b-traffic true --no-wait

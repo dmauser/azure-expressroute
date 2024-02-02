@@ -1,0 +1,14 @@
+#Parameters
+rg=lab-er-bgp #Define your resource group
+
+# List all the VMs in the resource group and their public IP addresses
+az vm list-ip-addresses --resource-group $rg --output table
+
+# List Public IP addresses of the VMS that contain the word nva
+az vm list-ip-addresses --resource-group $rg --query "[?contains(virtualMachine.name,'nva')].{Name:virtualMachine.name, IP:virtualMachine.network.publicIpAddresses[0].ipAddress}" --output table
+
+# List Azure Route Server and its private IP address
+az network routeserver list --resource-group $rg --query "[].{Name:name, PrivateIP:virtualRouterIps}" 
+
+# Turn off Fireall functionality
+# Configure BGP peers

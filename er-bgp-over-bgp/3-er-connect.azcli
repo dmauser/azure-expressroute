@@ -1,0 +1,47 @@
+#Parameters
+rg=lab-er-bgp #Define your resource group
+
+# Provsioning ER circuits
+echo Please, provsioning ExpressRoute Circuits
+ername1="azure-er-circuit"
+perloc1="Chicago"
+providerloc1=Megaport
+ername2="branch-er-circuit"
+perloc2="Chicago"
+providerloc2=Megaport
+
+# Get the expressroute gatewys in the rg
+echo Getting the expressroute gatewys in the rg
+ergw1=$(az network vnet-gateway list -g $rg --query [].name -o tsv | grep az)
+ergw2=$(az network vnet-gateway list -g $rg --query [].name -o tsv | grep branch)
+
+# Connect AzHub to ErCircuit1
+echo connecting az-hub to $ername1
+erid=$(az network express-route show -g $rg --name $ername1 --query id -o tsv)
+az network vpn-connection create --name connection-to-$ername1 \
+ --resource-group $rg --vnet-gateway1 $ergw1 \
+ --express-route-circuit2 $erid \
+ --routing-weight 0 \
+ &>/dev/null &
+
+# Connect $AzurehubName to ErCircuit2
+echo connecting $AzurehubName to $ername2
+erid=$(az network express-route show -g $rg --name $ername2 --query id -o tsv)
+az network vpn-connection create --name connection-to-$ername2 \
+ --resource-group $rg --vnet-gateway1 $ergw2 \
+ --express-route-circuit2 $erid \
+ --routing-weight 0 \
+ &>/dev/null &
+
+
+# Loop script to validate the ER circuits connection to the gateways
+echo Please, wait for the ER circuits to be connected to the gateways
+while true; do
+  if [[ $(az network vpn-connection show --name connection-to-$ername1 --resource-group $rg --query provisioningState -o tsv) == "Succeeded" ]] && [[ $(az network vpn-connection show --name connection-to-$ername2 --resource-group $rg --query provisioningState -o tsv) == "Succeeded" ]]; then
+    echo "ER circuits are connected to the gateways"
+    break
+  fi
+  echo "Status for connection-to-$ername1" $(az network vpn-connection show --name connection-to-$ername1 -g $rg --query 'provisioningState' -o tsv)
+  echo "Status for connection-to-$ername2" $(az network vpn-connection show --name connection-to-$ername2 -g $rg --query 'provisioningState' -o tsv)
+  sleep 10
+done

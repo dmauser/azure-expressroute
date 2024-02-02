@@ -1,0 +1,116 @@
+#Parameters
+rg=lab-er-bgp #Define your resource group
+location=southcentralus #Set location
+username=azureuser #Set username
+password=Msft123Msft123 #Set password
+virtualMachineSize=Standard_DS1_v2 #Set VM size
+
+# Create new UDR name az-udr-internet
+echo Creating new UDR az-hub-udr-internet
+az network route-table create --name az-hub-udr-internet --resource-group $rg --location $location --disable-bgp-route-propagation -o none
+# Add default route to UDR next hop Internet
+echo Adding default route to UDR next hop Internet
+az network route-table route create --name default-to-Internet --resource-group $rg --route-table-name az-hub-udr-internet --address-prefix 0.0.0.0/0 --next-hop-type Internet -o none  
+
+# Associated UDR to the untrusted subnet in the hub vnet
+echo Associating UDR to the untrusted subnet in the hub vnet
+az network vnet subnet update --name untrusted --vnet-name az-hub-vnet --resource-group $rg --route-table az-hub-udr-internet -o none
+
+# Create new UDR name az-udr-nvaft
+echo Creating new UDR az-hub-udr-nvaft
+az network route-table create --name az-hub-udr-nvaft --resource-group $rg --location $location --disable-bgp-route-propagation -o none
+# Get private ip of the network interface az-hub-nva1-Trusted-NIC
+echo Getting private ip of the network interface az-hub-nva1-Trusted-NIC
+nvanexthop=$(az network nic show --name az-hub-nva1-Trusted-NIC --resource-group $rg --query "ipConfigurations[0].privateIPAddress" -o tsv)
+# Get az-hub-nvalb1 private ip
+echo Getting az-hub-nvalb private ip
+nvanexthop=$(az network lb show --name az-hub-nvalb --resource-group $rg --query "frontendIPConfigurations[0].privateIPAddress" -o tsv)
+
+# Add default route to UDR next hop NVA
+echo Adding default route to UDR next hop NVA
+az network route-table route create --name default-to-NVA --resource-group $rg --route-table-name az-hub-udr-nvaft --address-prefix 0.0.0.0/0 --next-hop-type VirtualAppliance --next-hop-ip-address $nvanexthop -o none
+
+# Create az-hub-udr-gwsubnet
+echo Creating new UDR az-hub-udr-gwsubnet
+az network route-table create --name az-hub-udr-gwsubnet --resource-group $rg --location $location -o none
+# Add main subnet route to UDR next hop NVA
+echo Adding subnet1 route to UDR next hop NVA
+az network route-table route create --name hub-subnet1-to-NVA --resource-group $rg --route-table-name az-hub-udr-gwsubnet --address-prefix 10.0.0.0/27 --next-hop-type VirtualAppliance --next-hop-ip-address $nvanexthop -o none
+# Add az-spk11-vnet address space route to UDR next hop NVA
+echo Adding az-spk11-vnet address space route to UDR next hop NVA
+az network route-table route create --name az-spk11-vnet-to-NVA --resource-group $rg --route-table-name az-hub-udr-gwsubnet --address-prefix 10.0.1.0/24 --next-hop-type VirtualAppliance --next-hop-ip-address $nvanexthop -o none
+# Add az-spk12-vnet address space route to UDR next hop NVA
+echo Adding az-spk12-vnet address space route to UDR next hop NVA
+az network route-table route create --name az-spk12-vnet-to-NVA --resource-group $rg --route-table-name az-hub-udr-gwsubnet --address-prefix 10.0.2.0/24 --next-hop-type VirtualAppliance --next-hop-ip-address $nvanexthop -o none
+
+# Associate UDR to the gateway subnet in the hub vnet
+echo Associating UDR to the gateway subnet in the hub vnet
+az network vnet subnet update --name GatewaySubnet --vnet-name az-hub-vnet --resource-group $rg --route-table az-hub-udr-gwsubnet -o none
+# Associate UDR to the trusted subnet in the hub vnet
+echo Associating UDR to subnet1 in the hub vnet
+az network vnet subnet update --name subnet1 --vnet-name az-hub-vnet --resource-group $rg --route-table az-hub-udr-nvaft -o none
+
+### UDR for spoke vnets ####
+# Create spoke vnet udr
+echo Creating new UDR az-spk-udr-nva
+az network route-table create --name az-spk-udr-nva --resource-group $rg --location $location --disable-bgp-route-propagation -o none
+# Add default route to UDR next hop NVA
+echo Adding default route to UDR next hop NVA
+az network route-table route create --name default-to-NVA --resource-group $rg --route-table-name az-spk-udr-nva --address-prefix 0.0.0.0/0 --next-hop-type VirtualAppliance --next-hop-ip-address $nvanexthop -o none
+
+# Associate UDR to the subnet in both az-spk11-vnet and az-spk12-vnet
+echo Associating UDR to the subnet in both az-spk11-vnet and az-spk12-vnet
+az network vnet subnet update --name subnet1 --vnet-name az-spk11-vnet --resource-group $rg --route-table az-spk-udr-nva -o none
+az network vnet subnet update --name subnet1 --vnet-name az-spk12-vnet --resource-group $rg --route-table az-spk-udr-nva -o none
+
+
+#### BRANCH #####
+# Create a new UDR name branch-spk-udr-to-nva
+echo Creating new UDR branch-spk-udr-to-nva
+az network route-table create --name branch-spk-udr-to-nva --resource-group $rg --location $location --disable-bgp-route-propagation -o none
+# Get private ip of the network interface branch-opnnva-Trusted-NIC
+echo Getting private ip of the network interface branch-opnnva-Trusted-NIC
+nvanexthop=$(az network nic show --name branch-opnnva-Trusted-NIC --resource-group $rg --query "ipConfigurations[0].privateIPAddress" -o tsv)
+# Add default route to UDR next hop NVA
+echo Adding default route to UDR next hop NVA
+az network route-table route create --name default-to-NVA --resource-group $rg --route-table-name branch-spk-udr-to-nva --address-prefix 0.0.0.0/0 --next-hop-type VirtualAppliance --next-hop-ip-address $nvanexthop -o none
+# Associate UDR to the trusted subnet1 in the spoke branch vnet
+echo Associating UDR to the subnet1 in the spoke branch vnet
+az network vnet subnet update --name subnet1 --vnet-name branch-spoke-vnet --resource-group $rg --route-table branch-spk-udr-to-nva -o none
+
+# Associate UDR to subnet 2 and subnet 3 in the spoke branch vnet
+echo Associating UDR to the subnet2 and subnet3 in the spoke branch vnet
+az network vnet subnet update --name subnet2 --vnet-name branch-spoke-vnet --resource-group $rg --route-table branch-spk-udr-to-nva -o none
+az network vnet subnet update --name subnet3 --vnet-name branch-spoke-vnet --resource-group $rg --route-table branch-spk-udr-to-nva -o none
+
+# Create a new UDR name branch-udr-internet
+echo Creating new UDR branch-udr-internet
+az network route-table create --name branch-udr-internet --resource-group $rg --location $location --disable-bgp-route-propagation -o none
+# Add default route to UDR next hop Internet
+echo Adding default route to UDR next hop Internet
+az network route-table route create --name default-to-Internet --resource-group $rg --route-table-name branch-udr-internet --address-prefix 0.0.0.0/0 --next-hop-type Internet -o none
+# Associate UDR to the untrusted subnet in the spoke branch vnet
+echo Associating UDR to the untrusted subnet in the spoke branch vnet
+az network vnet subnet update --name untrusted-subnet --vnet-name branch-vnet --resource-group $rg --route-table branch-udr-internet -o none
+
+### Remove all UDR from the subnets
+echo Removing UDR from the subnets
+az network vnet subnet update --name GatewaySubnet --vnet-name az-hub-vnet --resource-group $rg --route-table null -o none
+az network vnet subnet update --name subnet1 --vnet-name az-hub-vnet --resource-group $rg --route-table null -o none
+az network vnet subnet update --name subnet1 --vnet-name branch-spoke-vnet --resource-group $rg --route-table null -o none
+az network vnet subnet update --name subnet2 --vnet-name branch-spoke-vnet --resource-group $rg --route-table null -o none
+az network vnet subnet update --name subnet3 --vnet-name branch-spoke-vnet --resource-group $rg --route-table null -o none
+az network vnet subnet update --name subnet1 --vnet-name az-spk11-vnet --resource-group $rg --route-table null -o none
+az network vnet subnet update --name subnet1 --vnet-name az-spk12-vnet --resource-group $rg --route-table null -o none
+
+# Enabling UDRs:
+az network vnet subnet update --name GatewaySubnet --vnet-name az-hub-vnet --resource-group $rg --route-table az-hub-udr-gwsubnet -o none
+az network vnet subnet update --name subnet1 --vnet-name az-hub-vnet --resource-group $rg --route-table az-hub-udr-nvaft -o none
+az network vnet subnet update --name subnet1 --vnet-name branch-spoke-vnet --resource-group $rg --route-table branch-spk-udr-to-nva -o none
+az network vnet subnet update --name subnet2 --vnet-name branch-spoke-vnet --resource-group $rg --route-table branch-spk-udr-to-nva -o none
+az network vnet subnet update --name subnet3 --vnet-name branch-spoke-vnet --resource-group $rg --route-table branch-spk-udr-to-nva -o none
+az network vnet subnet update --name subnet1 --vnet-name az-spk11-vnet --resource-group $rg --route-table az-spk-udr-nva -o none
+az network vnet subnet update --name subnet1 --vnet-name az-spk12-vnet --resource-group $rg --route-table az-spk-udr-nva -o none
+
+
+
