@@ -1,5 +1,4 @@
-# TODO1 - fix typo trusted
-# TODO2 - Breakdown SD-WAN and Firewall separated scripts
+# TODO - Breakdown SD-WAN and Firewall separated scripts
 
 #Parameters
 rg=lab-er-bgp #Define your resource group

@@ -12,3 +12,31 @@ az network routeserver list --resource-group $rg --query "[].{Name:name, Private
 
 # Turn off Fireall functionality
 # Configure BGP peers
+
+# List all expressroute gateways
+az network vnet-gateway list --resource-group $rg --query "[].{Name:name, PublicIP:ipConfigurations[0].publicIpAddress.id}" --output table
+
+# List ExpressRoute Gateway BGP peers
+az network vnet-gateway list-bgp-peer-status --resource-group $rg --gateway-name $gw --output table
+
+# Loop to list all the BGP peers for all Expressroute gateways
+for gw in $(az network vnet-gateway list --resource-group $rg --query "[].name" --output tsv); do
+    echo $gw
+    az network vnet-gateway list-bgp-peer-status --resource-group $rg --name $gw --output table
+done
+
+# Loop to list all the Learned routes all Expressroute gateways
+for gw in $(az network vnet-gateway list --resource-group $rg --query "[].name" --output tsv); do
+    echo $gw
+    az network vnet-gateway list-learned-routes --resource-group $rg --name $gw --output table
+done
+
+
+# List all expressroute circuits
+az network express-route list --resource-group $rg --query "[].{Name:name, PeeringLocation:peeringLocation, Bandwidth:bandwidthInGbps, CircuitProvisioningState:circuitProvisioningState}" --output table
+
+# Get route table from all expressroute circuits
+for circuit in $(az network express-route list --resource-group $rg --query "[].name" --output tsv); do
+    echo $circuit
+    az network express-route list-route-tables --path primary -n $circuit -g $rg  --peering-name AzurePrivatePeering --query value -o table
+done
